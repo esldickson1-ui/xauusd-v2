@@ -5,10 +5,10 @@ from telegram import Bot
 from telegram.constants import ParseMode
 logging.basicConfig(level=logging.INFO)
 log=logging.getLogger(__name__)
-TOKEN="8618470619:AAFeR6ntOIxo-DM-nPgaD2d_Q1H42Af0s20"
+TOKEN="8618470619:AAEA94YIgZJZlDaDDGgFNIohxpd6Kl6YMxY"
 CHAT="8493385467"
 KEY="4e51890e2987488ca88a799c8bd6b1f1"
-INTERVAL=int(os.getenv("CHECK_INTERVAL","300"))
+INTERVAL=300
 RR=2.0
 SIG=""
 
@@ -33,16 +33,13 @@ def session():
  if 7<=h<12:return True,"London Session"
  if 16<=h<20:return True,"New York Session"
  return False,"Off-Hours"
-
 async def fetch(s,iv,n=100):
  url=f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval={iv}&outputsize={n}&format=JSON&apikey={KEY}"
  async with s.get(url,timeout=aiohttp.ClientTimeout(total=20))as r:
   d=await r.json()
  if"values"not in d:raise RuntimeError(f"{iv}:{d.get('message','err')}")
  rows=sorted(d["values"],key=lambda x:x["datetime"])
- return([float(x["open"])for x in rows],[float(x["high"])for x in rows],
-        [float(x["low"])for x in rows],[float(x["close"])for x in rows])
-
+ return([float(x["open"])for x in rows],[float(x["high"])for x in rows],[float(x["low"])for x in rows],[float(x["close"])for x in rows])
 def signal(m5,m15,h1):
  _,h5,l5,c5=m5;_,h15,l15,c15=m15;_,_,_,ch1=h1
  price=c5[-1];e200=ema(ch1,min(50,len(ch1)-1))
@@ -55,55 +52,30 @@ def signal(m5,m15,h1):
  rng=sh-sl
  if bias=="bull":
   zlo=sh-rng*0.786;zhi=sh-rng*0.618
-  buf=(zhi-zlo)*0.2
-  ifib=zlo-buf<=price<=zhi+buf
-  eok=e21>e50 and price>e21
-  rok=40<rv<70
+  buf=(zhi-zlo)*0.2;ifib=zlo-buf<=price<=zhi+buf
+  eok=e21>e50 and price>e21;rok=40<rv<70
   bok=c15[-1]>sh and c15[-2]<=sh
   sc=sum([ifib,eok,rok,bok])
   if sc>=3 and ifib and eok:
    slp=price-av*1.5;tp=price+(price-slp)*RR
-   return{"d":"BUY","p":price,"sl":slp,"tp":tp,"rv":rv,"sess":sess,
-          "sc":sc,"zlo":zlo,"zhi":zhi,"bl":sh,"eok":eok,"rok":rok,"bok":bok,"ifib":ifib}
+   return{"d":"BUY","p":price,"sl":slp,"tp":tp,"rv":rv,"sess":sess,"sc":sc,"zlo":zlo,"zhi":zhi,"bl":sh,"eok":eok,"rok":rok,"bok":bok,"ifib":ifib}
  if bias=="bear":
   zlo=sl+rng*0.618;zhi=sl+rng*0.786
-  buf=(zhi-zlo)*0.2
-  ifib=zlo-buf<=price<=zhi+buf
-  eok=e21<e50 and price<e21
-  rok=30<rv<60
+  buf=(zhi-zlo)*0.2;ifib=zlo-buf<=price<=zhi+buf
+  eok=e21<e50 and price<e21;rok=30<rv<60
   bok=c15[-1]<sl and c15[-2]>=sl
   sc=sum([ifib,eok,rok,bok])
   if sc>=3 and ifib and eok:
    slp=price+av*1.5;tp=price-(slp-price)*RR
-   return{"d":"SELL","p":price,"sl":slp,"tp":tp,"rv":rv,"sess":sess,
-          "sc":sc,"zlo":zlo,"zhi":zhi,"bl":sl,"eok":eok,"rok":rok,"bok":bok,"ifib":ifib}
+   return{"d":"SELL","p":price,"sl":slp,"tp":tp,"rv":rv,"sess":sess,"sc":sc,"zlo":zlo,"zhi":zhi,"bl":sl,"eok":eok,"rok":rok,"bok":bok,"ifib":ifib}
  return None
-
-def msg(s):
- ic="BUY"==s["d"]
- return(
-  f"{'🟢'if ic else'🔴'} *XAUUSD {s['d']} SIGNAL*\n"
-  f"━━━━━━━━━━━━━━━━━━━━━━\n"
-  f"📍 {s['sess']}\n\n"
-  f"💰 *ENTRY:* `{s['p']:.2f}`\n"
-  f"🛑 *SL:* `{s['sl']:.2f}`\n"
-  f"🎯 *TP:* `{s['tp']:.2f}`\n"
-  f"⚖️ *RR:* 1:{RR}\n"
-  f"━━━━━━━━━━━━━━━━━━━━━━\n"
-  f"{'✅'if s['bok']else'⬜'} Break of Structure @ `{s['bl']:.2f}`\n"
-  f"{'✅'if s['ifib']else'⬜'} Fib Zone `{s['zlo']:.2f}-{s['zhi']:.2f}`\n"
-  f"{'✅'if s['eok']else'⬜'} EMA 21/50\n"
-  f"{'✅'if s['rok']else'⬜'} RSI `{s['rv']:.1f}`\n"
-  f"━━━━━━━━━━━━━━━━━━━━━━\n"
-  f"📈 [LIVE CHART](https://www.tradingview.com/chart/?symbol=OANDA:XAUUSD&interval=5)\n"
-  f"⚠️ _Max 1-2% risk. Always use SL._"
- )
-
+def buildmsg(s):
+ ic=s["d"]=="BUY"
+ return(f"{'🟢'if ic else'🔴'} *XAUUSD {s['d']} SIGNAL*\n━━━━━━━━━━━━━━━━━━━━━━\n📍 {s['sess']}\n\n💰 *ENTRY:* `{s['p']:.2f}`\n🛑 *SL:* `{s['sl']:.2f}`\n🎯 *TP:* `{s['tp']:.2f}`\n⚖️ *RR:* 1:{RR}\n━━━━━━━━━━━━━━━━━━━━━━\n{'✅'if s['bok']else'⬜'} BOS @ `{s['bl']:.2f}`\n{'✅'if s['ifib']else'⬜'} Fib `{s['zlo']:.2f}-{s['zhi']:.2f}`\n{'✅'if s['eok']else'⬜'} EMA 21/50\n{'✅'if s['rok']else'⬜'} RSI `{s['rv']:.1f}`\n━━━━━━━━━━━━━━━━━━━━━━\n📈 [LIVE CHART](https://www.tradingview.com/chart/?symbol=OANDA:XAUUSD&interval=5)\n⚠️ _Max 1-2% risk. Always use SL._")
 async def run():
  global SIG
  bot=Bot(token=TOKEN)
- await bot.send_message(chat_id=CHAT,parse_mode=ParseMode.MARKDOWN,
-  text="🤖 *XAUUSD Bot ONLINE* ✅\n\n📡 Monitoring XAU/USD\n⚙️ BOS + Fib + EMA + RSI\n_Watching for setups..._")
+ await bot.send_message(chat_id=CHAT,parse_mode=ParseMode.MARKDOWN,text="🤖 *XAUUSD Bot ONLINE* ✅\n\n📡 Monitoring XAU/USD\n⚙️ BOS + Fib + EMA + RSI\n_Watching for setups..._")
  log.info("Bot online")
  async with aiohttp.ClientSession()as s:
   while True:
@@ -119,16 +91,12 @@ async def run():
     if sig:
      k=f"{sig['d']}_{int(price)}"
      if k!=SIG:
-      await bot.send_message(chat_id=CHAT,text=msg(sig),parse_mode=ParseMode.MARKDOWN)
+      await bot.send_message(chat_id=CHAT,text=buildmsg(sig),parse_mode=ParseMode.MARKDOWN)
       SIG=k;log.info(f"Signal:{sig['d']}@{price:.2f}")
-    else:
-     log.info("No signal")
+    else:log.info("No signal")
    except Exception as e:
     log.error(f"Err:{e}")
-    try:
-     await bot.send_message(chat_id=CHAT,parse_mode=ParseMode.MARKDOWN,
-      text=f"⚠️ Error: `{str(e)[:100]}`")
+    try:await bot.send_message(chat_id=CHAT,parse_mode=ParseMode.MARKDOWN,text=f"⚠️ Error:`{str(e)[:100]}`")
     except:pass
    await asyncio.sleep(INTERVAL)
-
 asyncio.run(run())
