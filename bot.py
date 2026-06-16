@@ -5,9 +5,9 @@ from telegram import Bot
 from telegram.constants import ParseMode
 logging.basicConfig(level=logging.INFO)
 log=logging.getLogger(__name__)
-TOKEN=os.environ.get("TELEGRAM_TOKEN","")
-CHAT=os.environ.get("TELEGRAM_CHAT_ID","")
-KEY=os.environ.get("TWELVE_DATA_KEY","")
+TOKEN="8618470619:AAFeR6ntOIxo-DM-nPgaD2d_Q1H42Af0s20"
+CHAT="8493385467"
+KEY="4e51890e2987488ca88a799c8bd6b1f1"
 CHAT=os.environ["TELEGRAM_CHAT_ID"]
 KEY=os.environ["TWELVE_DATA_KEY"]
 INTERVAL=int(os.getenv("CHECK_INTERVAL","300"))
