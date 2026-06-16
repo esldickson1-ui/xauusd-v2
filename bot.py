@@ -37,11 +37,12 @@ def killzone():
 def bodypct(o,c,h,l):
  rng=h-l
  return 0 if rng==0 else abs(c-o)/rng
-def wickratio(o,c,h,l,bull):
+ def wickratio(o,c,h,l,bull):
  rng=h-l
  if rng==0:return 0
  if bull:return(o-l)/rng
- return(h-o)/rng if c<o else(h-c)/rngasync def fetch(s,iv,n=100):
+ if c<o:return(h-o)/rng
+ return(h-c)/rng
  url=f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval={iv}&outputsize={n}&format=JSON&apikey={KEY}"
  async with s.get(url,timeout=aiohttp.ClientTimeout(total=20))as r:
   d=await r.json()
