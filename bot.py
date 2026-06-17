@@ -131,15 +131,6 @@ def detect_liquidity_grab(h,l,c):
             bear_grab=True
     return bull_grab,bear_grab,eqhigh,eqlow
 
-def detect_mss(c,bias):
-    if bias=="bull":
-        recent_low=min(c[-10:-2])
-        return c[-1]>c[-2] and c[-2]>recent_low
-    if bias=="bear":
-        recent_high=max(c[-10:-2])
-        return c[-1]<c[-2] and c[-2]<recent_high
-    return False
-
 def detect_orderblock(o,h,l,c,bias):
     if bias=="bull":
         for i in range(3,min(40,len(c)-2)):
@@ -194,8 +185,6 @@ def get_signal(m5,m15,h1):
     bos=detect_bos(m15)
     bos_retest=detect_bos_retest(m15,bos,bias)
     bull_grab,bear_grab,eqh,eql=detect_liquidity_grab(h5,l5,c5)
-    mss_bull=detect_mss(c5,"bull")
-    mss_bear=detect_mss(c5,"bear")
     ob=detect_orderblock(o15,h15,l15,c15,bias)
     fvg=detect_fvg(h5,l5,bias)
     flo,fhi=fib_zone(bos["sh"],bos["sl"],bias)
@@ -209,7 +198,7 @@ def get_signal(m5,m15,h1):
         ema_ok=e21>e50 and price>e21
         rsi_ok=40<rv<72
         # Fakeout filter: only enter AFTER a liquidity sweep/BOS, never buy INTO an untested high
-        fakeout_safe=bull_grab or bos["bullish"] or mss_bull
+        fakeout_safe=bull_grab or bos["bullish"]
 
         factors=[
             ("M15 Break of Structure",bos["bullish"]),
@@ -218,7 +207,6 @@ def get_signal(m5,m15,h1):
             ("Fair Value Gap",bool(in_fvg)),
             ("RSI Momentum "+str(round(rv,1)),rsi_ok),
             ("Liquidity Grab (Fakeout Filter)",bull_grab),
-            ("Market Structure Shift",mss_bull),
             ("Order Block",bool(in_ob)),
             ("Wick Rejection",wb),
         ]
@@ -233,7 +221,7 @@ def get_signal(m5,m15,h1):
     if bias=="bear":
         ema_ok=e21<e50 and price<e21
         rsi_ok=28<rv<60
-        fakeout_safe=bear_grab or bos["bearish"] or mss_bear
+        fakeout_safe=bear_grab or bos["bearish"]
 
         factors=[
             ("M15 Break of Structure",bos["bearish"]),
@@ -242,7 +230,6 @@ def get_signal(m5,m15,h1):
             ("Fair Value Gap",bool(in_fvg)),
             ("RSI Momentum "+str(round(rv,1)),rsi_ok),
             ("Liquidity Grab (Fakeout Filter)",bear_grab),
-            ("Market Structure Shift",mss_bear),
             ("Order Block",bool(in_ob)),
             ("Wick Rejection",wbr),
         ]
@@ -275,7 +262,7 @@ def buildmsg(s):
         f"TAKE PROFIT: {s['tp']:.2f}\n"
         f"Risk:Reward: 1:{RR}\n"
         f"------------------------\n"
-        f"CONFLUENCE ({s['score']}/9)\n"
+        f"CONFLUENCE ({s['score']}/8)\n"
         f"{conf_text}\n"
         f"------------------------\n"
         f"BOS Level: {s['bos']:.2f}\n"
@@ -305,7 +292,7 @@ async def run():
                     if k!=SIG:
                         await bot.send_message(chat_id=CHAT,text=buildmsg(sig))
                         SIG=k
-                        log.info(f"Signal sent:{sig['d']}@{price:.2f} Score:{sig['score']}/9")
+                        log.info(f"Signal sent:{sig['d']}@{price:.2f} Score:{sig['score']}/8")
                 else:
                     log.info(f"No signal. Price:{price:.2f} Bias:{bias}")
             except Exception as e:
