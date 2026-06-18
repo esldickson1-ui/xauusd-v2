@@ -58,7 +58,7 @@ def killzone():
         return True,"London Midday"
     if 13<=h<16:
         return True,"NY Open Killzone"
-    if 16<=h<20:
+    if 16<=h<21:
         return True,"NY Afternoon"
     return False,"Off-Hours"
 
